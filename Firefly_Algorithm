@@ -1,0 +1,71 @@
+import numpy as np
+
+def distance(x1, y1, x2, y2):
+    return np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+
+def TSP_FFA(n_cities, population_size, max_iter, decision_variable, lower_bound, upper_bound, gamma, beta0, alpha, dumbing_ratio):
+    # Generate random cities
+    cities = np.random.uniform(low=lower_bound, high=upper_bound, size=(n_cities, 2))
+
+    # Calculate the distance matrix
+    dist_matrix = np.zeros((n_cities, n_cities))
+    for i in range(n_cities):
+        for j in range(n_cities):
+            dist_matrix[i][j] = distance(cities[i][0], cities[i][1], cities[j][0], cities[j][1])
+
+    # Initialize the population
+    population = np.zeros((population_size, n_cities), dtype=int)
+    for i in range(population_size):
+        population[i] = np.random.permutation(n_cities)
+
+    # Initialize the best solution and its fitness
+    best_solution = None
+    best_fitness = float('inf')
+
+    # Iterate through the maximum number of iterations
+    for iteration in range(max_iter):
+        # Calculate the fitness of each solution
+        fitness = np.zeros(population_size)
+        for i in range(population_size):
+            path_length = 0
+            for j in range(n_cities - 1):
+                path_length += dist_matrix[population[i][j]][population[i][j + 1]]
+            path_length += dist_matrix[population[i][-1]][population[i][0]]
+            fitness[i] = path_length
+
+            # Update the best solution if necessary
+            if path_length < best_fitness:
+                best_solution = population[i].copy()
+                best_fitness = path_length
+
+        # Sort the population by fitness
+        sorted_indices = np.argsort(fitness)
+
+        # Update the firefly positions
+        for i in range(population_size):
+            for j in range(population_size):
+                if fitness[sorted_indices[j]] < fitness[sorted_indices[i]]:
+                    r = np.sqrt(np.sum((cities[population[sorted_indices[j]]] - cities[population[sorted_indices[i]]]) ** 2))
+                    beta = beta0 * np.exp(-gamma * r ** 2)
+                    population[sorted_indices[i]] = population[sorted_indices[i]] + alpha * beta * (population[sorted_indices[j]] - population[sorted_indices[i]])
+                    population[sorted_indices[i]] = np.clip(population[sorted_indices[i]], lower_bound, upper_bound).astype(int)
+
+        # Apply dumbing ratio to alpha
+        alpha *= dumbing_ratio
+
+    return best_solution
+
+# Example usage:
+best_path = TSP_FFA(n_cities=10,
+                    population_size=5,
+                    max_iter=5,
+                    decision_variable=1,
+                    lower_bound=-10,
+                    upper_bound=10,
+                    gamma=1,
+                    beta0=2,
+                    alpha=0.2,
+                    dumbing_ratio=0.98)
+
+
+print(best_path)
